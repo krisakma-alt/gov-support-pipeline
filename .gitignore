@@ -17,6 +17,7 @@ build/
 # 임시/결과 파일
 results.txt
 *.xlsx
+logs/
 
 # Claude
 .claude/

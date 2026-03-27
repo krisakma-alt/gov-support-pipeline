@@ -16,7 +16,7 @@ from main import (
     analyze_with_claude,
     fetch_bizinfo,
     fetch_existing_source_ids,
-    fetch_semas,
+    fetch_nipa,
     filter_regional,
     make_source_id,
     parse_top5_from_analysis,
@@ -62,7 +62,7 @@ def analyze():
         return jsonify({"error": "사업 설명을 입력하거나 파일을 업로드해주세요."}), 400
 
     # 공고 수집 + 지역 필터링
-    all_ann = fetch_bizinfo() + fetch_semas()
+    all_ann = fetch_bizinfo() + fetch_nipa()
     all_ann, filtered_count = filter_regional(all_ann)
 
     # 중복 제거 (이미 Sheets에 있는 공고 제외)
