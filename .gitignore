@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# 환경변수 (API 키, 서비스 계정)
+.env
+*.json
+!package.json
+
+# IDE
+.vscode/
+.idea/
+
+# 임시/결과 파일
+results.txt
+*.xlsx
+
+# Claude
+.claude/

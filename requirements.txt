@@ -1,0 +1,9 @@
+anthropic
+requests
+beautifulsoup4
+python-dotenv
+lxml
+gspread
+google-auth
+flask
+pypdf
