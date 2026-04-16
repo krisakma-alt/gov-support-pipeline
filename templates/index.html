@@ -2,16 +2,20 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>정부 지원사업 공고</title>
+    <title>영리봇 정부지원사업 공고</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; max-width: 1100px; margin: 24px auto; padding: 0 16px; color: #222; background: #fafafa; }
-        h1 { margin: 0 0 20px; }
-        .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; background: white; padding: 16px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .toolbar input { flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        h1 { margin: 0 0 8px; }
+        .subtitle { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+        .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; background: white; padding: 16px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .toolbar input[type="text"] { flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
         .toolbar select { padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white; }
         .toolbar button { padding: 9px 18px; background: #5b21b6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
         .toolbar button:hover { background: #4c1d95; }
+        .filters { display: flex; gap: 16px; padding: 0 4px 16px; font-size: 13px; color: #4b5563; flex-wrap: wrap; }
+        .filters label { cursor: pointer; user-select: none; }
+        .filters input { margin-right: 4px; vertical-align: middle; }
         .count { color: #666; font-size: 13px; margin-left: auto; }
         .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 20px; margin-bottom: 12px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
         .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
@@ -19,6 +23,7 @@
         .title a { color: #1f2937; text-decoration: none; }
         .title a:hover { color: #5b21b6; text-decoration: underline; }
         .score { background: #ede9fe; color: #5b21b6; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; white-space: nowrap; }
+        .score.high { background: #dcfce7; color: #15803d; }
         .score.low { background: #f3f4f6; color: #9ca3af; }
         .meta { display: flex; gap: 14px; color: #6b7280; font-size: 13px; margin-bottom: 10px; flex-wrap: wrap; }
         .reason { color: #374151; font-size: 14px; line-height: 1.6; }
@@ -26,21 +31,28 @@
     </style>
 </head>
 <body>
-    <h1>📋 정부 지원사업 공고</h1>
+    <h1>📋 영리봇 정부지원사업 공고</h1>
+    <div class="subtitle">QR 기반 매장 리뷰 자동화 서비스 맞춤 추천</div>
 
-    <form class="toolbar" method="get">
-        <input type="text" name="q" placeholder="공고명·키워드 검색" value="{{ query }}">
-        <select name="sort">
-            <option value="score" {% if sort=='score' %}selected{% endif %}>적합도 높은 순</option>
-            <option value="recent" {% if sort=='recent' %}selected{% endif %}>최근 수집 순</option>
-            <option value="deadline" {% if sort=='deadline' %}selected{% endif %}>마감 임박 순</option>
-        </select>
-        <button type="submit">조회</button>
-        <span class="count">총 {{ items|length }}건</span>
+    <form method="get">
+        <div class="toolbar">
+            <input type="text" name="q" placeholder="공고명·키워드 검색" value="{{ query }}">
+            <select name="sort">
+                <option value="recent" {% if sort=='recent' %}selected{% endif %}>최근 수집 순</option>
+                <option value="score" {% if sort=='score' %}selected{% endif %}>적합도 높은 순</option>
+                <option value="deadline" {% if sort=='deadline' %}selected{% endif %}>마감 임박 순</option>
+            </select>
+            <button type="submit">조회</button>
+            <span class="count">{{ items|length }}건 표시 / 전체 {{ total_raw }}건</span>
+        </div>
+        <div class="filters">
+            <label><input type="checkbox" name="show_expired" value="1" {% if show_expired %}checked{% endif %} onchange="this.form.submit()"> 마감 지난 공고 포함</label>
+            <label><input type="checkbox" name="show_old" value="1" {% if show_old %}checked{% endif %} onchange="this.form.submit()"> 옛날 데이터(영리봇 이전) 포함</label>
+        </div>
     </form>
 
     {% if not items %}
-        <div class="empty">공고가 없습니다.</div>
+        <div class="empty">조건에 맞는 공고가 없습니다.</div>
     {% else %}
         {% for item in items %}
         <div class="card">
@@ -52,14 +64,15 @@
                     {{ item.get('공고명', '제목 없음') }}
                     {% endif %}
                 </div>
-                {% set score = item.get('영리봇 적합도') or item.get('적합도 점수') or '-' %}
-                <span class="score {% if score == '-' %}low{% endif %}">⭐ {{ score }}</span>
+                {% set raw_score = item.get('영리봇 적합도') or item.get('적합도 점수') or '-' %}
+                {% set score_num = (raw_score|float(0)) if raw_score != '-' else 0 %}
+                <span class="score {% if score_num >= 8 %}high{% elif score_num < 5 %}low{% endif %}">⭐ {{ raw_score }}</span>
             </div>
             <div class="meta">
                 <span>📍 {{ item.get('출처 사이트', '-') }}</span>
                 <span>⏰ 마감 {{ item.get('신청 마감일', '-') }}</span>
-                {% if item.get('지원 금액') %}<span>💰 {{ item['지원 금액'] }}</span>{% endif %}
                 {% if item.get('개인사업자 가능') %}<span>👤 개인사업자 {{ item['개인사업자 가능'] }}</span>{% endif %}
+                {% if item.get('수집일') %}<span style="margin-left:auto; color:#9ca3af;">{{ item['수집일'][:10] }} 수집</span>{% endif %}
             </div>
             {% if item.get('적합도 근거') %}
             <div class="reason">{{ item['적합도 근거'] }}</div>
