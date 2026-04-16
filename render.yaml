@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: gov-support-viewer
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: echo "$GOOGLE_CREDENTIALS_JSON" > /tmp/service-account.json && gunicorn --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: GOOGLE_CREDENTIALS_PATH
+        value: /tmp/service-account.json
