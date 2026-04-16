@@ -12,9 +12,8 @@
         .toolbar input[type="text"] { flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
         .toolbar select { padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white; }
         .toolbar button { padding: 9px 18px; background: #5b21b6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .toolbar button:hover { background: #4c1d95; }
         .filters { display: flex; gap: 16px; padding: 0 4px 16px; font-size: 13px; color: #4b5563; flex-wrap: wrap; }
-        .filters label { cursor: pointer; user-select: none; }
+        .filters label { cursor: pointer; }
         .filters input { margin-right: 4px; vertical-align: middle; }
         .count { color: #666; font-size: 13px; margin-left: auto; }
         .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 20px; margin-bottom: 12px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
@@ -26,28 +25,37 @@
         .score.high { background: #dcfce7; color: #15803d; }
         .score.low { background: #f3f4f6; color: #9ca3af; }
         .meta { display: flex; gap: 14px; color: #6b7280; font-size: 13px; margin-bottom: 10px; flex-wrap: wrap; }
-        .reason { color: #374151; font-size: 14px; line-height: 1.6; }
+        .reason { color: #374151; font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+        .analyze-btn { padding: 8px 14px; background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; }
+        .analyze-btn:hover { background: #e5e7eb; }
+        .analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .analysis { margin-top: 14px; padding: 16px 18px; background: #f9fafb; border-left: 3px solid #5b21b6; border-radius: 6px; font-size: 14px; line-height: 1.7; color: #1f2937; display: none; }
+        .analysis.visible { display: block; }
+        .analysis h3 { margin: 14px 0 6px; font-size: 15px; color: #5b21b6; }
+        .analysis h3:first-child { margin-top: 0; }
+        .analysis ul { margin: 4px 0 8px; padding-left: 20px; }
+        .analysis li { margin-bottom: 3px; }
         .empty { text-align: center; padding: 60px; color: #9ca3af; background: white; border-radius: 10px; }
     </style>
 </head>
 <body>
     <h1>📋 영리봇 정부지원사업 공고</h1>
-    <div class="subtitle">QR 기반 매장 리뷰 자동화 서비스 맞춤 추천</div>
+    <div class="subtitle">QR 기반 매장 리뷰 자동화 SaaS 맞춤 추천</div>
 
     <form method="get">
         <div class="toolbar">
             <input type="text" name="q" placeholder="공고명·키워드 검색" value="{{ query }}">
             <select name="sort">
-                <option value="recent" {% if sort=='recent' %}selected{% endif %}>최근 수집 순</option>
                 <option value="score" {% if sort=='score' %}selected{% endif %}>적합도 높은 순</option>
+                <option value="recent" {% if sort=='recent' %}selected{% endif %}>최근 수집 순</option>
                 <option value="deadline" {% if sort=='deadline' %}selected{% endif %}>마감 임박 순</option>
             </select>
             <button type="submit">조회</button>
-            <span class="count">{{ items|length }}건 표시 / 전체 {{ total_raw }}건</span>
+            <span class="count">{{ items|length }}건 / 전체 {{ total_raw }}건</span>
         </div>
         <div class="filters">
             <label><input type="checkbox" name="show_expired" value="1" {% if show_expired %}checked{% endif %} onchange="this.form.submit()"> 마감 지난 공고 포함</label>
-            <label><input type="checkbox" name="show_old" value="1" {% if show_old %}checked{% endif %} onchange="this.form.submit()"> 옛날 데이터(영리봇 이전) 포함</label>
+            <label><input type="checkbox" name="show_old" value="1" {% if show_old %}checked{% endif %} onchange="this.form.submit()"> 옛날 데이터 포함</label>
         </div>
     </form>
 
@@ -60,9 +68,7 @@
                 <div class="title">
                     {% if item.get('공고 URL') %}
                     <a href="{{ item['공고 URL'] }}" target="_blank" rel="noopener">{{ item.get('공고명', '제목 없음') }}</a>
-                    {% else %}
-                    {{ item.get('공고명', '제목 없음') }}
-                    {% endif %}
+                    {% else %}{{ item.get('공고명', '제목 없음') }}{% endif %}
                 </div>
                 {% set raw_score = item.get('영리봇 적합도') or item.get('적합도 점수') or '-' %}
                 {% set score_num = (raw_score|float(0)) if raw_score != '-' else 0 %}
@@ -71,14 +77,69 @@
             <div class="meta">
                 <span>📍 {{ item.get('출처 사이트', '-') }}</span>
                 <span>⏰ 마감 {{ item.get('신청 마감일', '-') }}</span>
-                {% if item.get('개인사업자 가능') %}<span>👤 개인사업자 {{ item['개인사업자 가능'] }}</span>{% endif %}
+                {% if item.get('개인사업자 가능') %}<span>👤 {{ item['개인사업자 가능'] }}</span>{% endif %}
                 {% if item.get('수집일') %}<span style="margin-left:auto; color:#9ca3af;">{{ item['수집일'][:10] }} 수집</span>{% endif %}
             </div>
             {% if item.get('적합도 근거') %}
             <div class="reason">{{ item['적합도 근거'] }}</div>
             {% endif %}
+            <button class="analyze-btn"
+                    data-url="{{ item.get('공고 URL', '') }}"
+                    data-title="{{ item.get('공고명', '') }}"
+                    onclick="analyzeCard(this)">🤖 AI로 자세히 해석</button>
+            <div class="analysis"></div>
         </div>
         {% endfor %}
     {% endif %}
+
+<script>
+function renderMarkdown(md) {
+    let html = md
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^- (.+)$/gm, '__LI__$1__/LI__')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/(__LI__.+?__\/LI__\n?)+/g, m => {
+        return '<ul>' + m.replace(/__LI__(.+?)__\/LI__\n?/g, '<li>$1</li>') + '</ul>';
+    });
+    html = html.split(/\n{2,}/).map(p => p.startsWith('<') ? p : '<p>'+p.replace(/\n/g,'<br>')+'</p>').join('');
+    return html;
+}
+
+async function analyzeCard(btn) {
+    const card = btn.closest('.card');
+    const target = card.querySelector('.analysis');
+    const url = btn.dataset.url;
+    const title = btn.dataset.title;
+    if (!url) { alert('공고 URL이 없습니다'); return; }
+    btn.disabled = true;
+    btn.textContent = '⏳ AI가 공고를 읽고 있어요...';
+    target.classList.remove('visible');
+    target.innerHTML = '';
+    try {
+        const r = await fetch('/analyze', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url, title})
+        });
+        const data = await r.json();
+        if (data.analysis) {
+            target.innerHTML = renderMarkdown(data.analysis);
+            target.classList.add('visible');
+            btn.textContent = '✅ 해석 완료';
+        } else {
+            target.innerHTML = '<p style="color:#dc2626">' + (data.error || '실패') + '</p>';
+            target.classList.add('visible');
+            btn.disabled = false;
+            btn.textContent = '🔄 다시 시도';
+        }
+    } catch (e) {
+        target.innerHTML = '<p style="color:#dc2626">에러: ' + e + '</p>';
+        target.classList.add('visible');
+        btn.disabled = false;
+        btn.textContent = '🔄 다시 시도';
+    }
+}
+</script>
 </body>
 </html>
