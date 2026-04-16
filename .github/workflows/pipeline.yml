@@ -1,0 +1,29 @@
+name: 정부지원사업 파이프라인
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 매일 오전 9시 KST
+  workflow_dispatch:      # 수동 실행 버튼도 생김
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: Google 인증 파일 생성
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > /tmp/service-account.json
+
+      - name: 파이프라인 실행
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_CREDENTIALS_PATH: /tmp/service-account.json
+        run: python main.py
